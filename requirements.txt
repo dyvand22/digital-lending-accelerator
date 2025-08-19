@@ -1,0 +1,29 @@
+# ML and Data Processing
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+
+# API Development
+Flask==3.0.0
+Flask-CORS==4.0.0
+requests==2.31.0
+
+# Database
+SQLAlchemy==2.0.23
+pymysql==1.1.0
+psycopg2-binary==2.9.9
+
+# Data Visualization
+plotly==5.17.0
+
+# Utilities
+python-dotenv==1.0.0
+joblib==1.3.2
+python-dateutil==2.8.2
+
+# Development
+pytest==7.4.3
+jupyter==1.0.0
+notebook==7.0.6
