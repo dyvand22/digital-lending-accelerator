@@ -1,0 +1,237 @@
+{
+  "dashboard": {
+    "name": "Digital Lending Analytics Dashboard",
+    "description": "Comprehensive analytics for ML-driven loan approval system",
+    "layout": "grid",
+    "refreshInterval": 300,
+    "widgets": [
+      {
+        "id": "overview_metrics",
+        "type": "scorecard",
+        "title": "Key Performance Indicators",
+        "position": {"row": 1, "col": 1, "width": 12, "height": 2},
+        "metrics": [
+          {
+            "name": "Total Applications Today",
+            "query": "SELECT COUNT(*) FROM ml_prediction_logs WHERE DATE(created_timestamp) = CURDATE()",
+            "format": "number",
+            "color": "#1f77b4"
+          },
+          {
+            "name": "Automation Rate",
+            "query": "SELECT ROUND((SUM(CASE WHEN prediction IN ('approved', 'rejected') THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) FROM ml_prediction_logs WHERE DATE(created_timestamp) = CURDATE()",
+            "format": "percentage",
+            "color": "#ff7f0e"
+          },
+          {
+            "name": "Average Confidence",
+            "query": "SELECT ROUND(AVG(confidence_score) * 100, 1) FROM ml_prediction_logs WHERE DATE(created_timestamp) = CURDATE()",
+            "format": "percentage",
+            "color": "#2ca02c"
+          },
+          {
+            "name": "Processing Time",
+            "query": "SELECT ROUND(AVG(processing_time_ms), 0) FROM ml_prediction_logs WHERE DATE(created_timestamp) = CURDATE()",
+            "format": "milliseconds",
+            "color": "#d62728"
+          }
+        ]
+      },
+      {
+        "id": "prediction_distribution",
+        "type": "donut_chart",
+        "title": "Prediction Distribution (Last 7 Days)",
+        "position": {"row": 3, "col": 1, "width": 6, "height": 4},
+        "query": "SELECT prediction, COUNT(*) as count FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY prediction",
+        "dimensions": ["prediction"],
+        "measures": ["count"],
+        "colors": {
+          "approved": "#2ca02c",
+          "rejected": "#d62728", 
+          "manual_review": "#ff7f0e"
+        }
+      },
+      {
+        "id": "daily_trends",
+        "type": "line_chart",
+        "title": "Daily Application Trends (Last 30 Days)",
+        "position": {"row": 3, "col": 7, "width": 6, "height": 4},
+        "query": "SELECT DATE(created_timestamp) as date, COUNT(*) as total_applications, SUM(CASE WHEN prediction = 'approved' THEN 1 ELSE 0 END) as approved, SUM(CASE WHEN prediction = 'rejected' THEN 1 ELSE 0 END) as rejected FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY DATE(created_timestamp) ORDER BY date",
+        "x_axis": "date",
+        "y_axes": ["total_applications", "approved", "rejected"],
+        "colors": {
+          "total_applications": "#1f77b4",
+          "approved": "#2ca02c",
+          "rejected": "#d62728"
+        }
+      },
+      {
+        "id": "confidence_distribution",
+        "type": "histogram",
+        "title": "Confidence Score Distribution",
+        "position": {"row": 7, "col": 1, "width": 6, "height": 4},
+        "query": "SELECT ROUND(confidence_score, 1) as confidence_bucket, COUNT(*) as count FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY ROUND(confidence_score, 1) ORDER BY confidence_bucket",
+        "x_axis": "confidence_bucket",
+        "y_axis": "count",
+        "bins": 20
+      },
+      {
+        "id": "processing_time_trend",
+        "type": "area_chart",
+        "title": "Processing Time Trend (Hourly)",
+        "position": {"row": 7, "col": 7, "width": 6, "height": 4},
+        "query": "SELECT DATE_FORMAT(created_timestamp, '%Y-%m-%d %H:00:00') as hour, AVG(processing_time_ms) as avg_processing_time, MAX(processing_time_ms) as max_processing_time FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 24 HOUR) GROUP BY DATE_FORMAT(created_timestamp, '%Y-%m-%d %H:00:00') ORDER BY hour",
+        "x_axis": "hour",
+        "y_axes": ["avg_processing_time", "max_processing_time"],
+        "colors": {
+          "avg_processing_time": "#1f77b4",
+          "max_processing_time": "#ff7f0e"
+        }
+      },
+      {
+        "id": "loan_amount_analysis",
+        "type": "scatter_plot",
+        "title": "Loan Amount vs Credit Score Analysis",
+        "position": {"row": 11, "col": 1, "width": 6, "height": 4},
+        "query": "SELECT credit_score, loan_amount, confidence_score, prediction FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND credit_score IS NOT NULL AND loan_amount IS NOT NULL",
+        "x_axis": "credit_score",
+        "y_axis": "loan_amount",
+        "color_by": "prediction",
+        "size_by": "confidence_score",
+        "colors": {
+          "approved": "#2ca02c",
+          "rejected": "#d62728",
+          "manual_review": "#ff7f0e"
+        }
+      },
+      {
+        "id": "model_accuracy_trend",
+        "type": "combination_chart",
+        "title": "Model Performance Trend",
+        "position": {"row": 11, "col": 7, "width": 6, "height": 4},
+        "query": "SELECT metric_date, automation_rate, avg_confidence_score * 100 as avg_confidence_percentage, total_predictions FROM (SELECT metric_date, ROUND((approved_predictions + rejected_predictions) / total_predictions * 100, 1) as automation_rate, avg_confidence_score, total_predictions FROM model_performance_metrics WHERE metric_date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) ORDER BY metric_date) as metrics",
+        "x_axis": "metric_date",
+        "line_metrics": ["automation_rate", "avg_confidence_percentage"],
+        "bar_metrics": ["total_predictions"],
+        "colors": {
+          "automation_rate": "#2ca02c",
+          "avg_confidence_percentage": "#1f77b4",
+          "total_predictions": "#ff7f0e"
+        }
+      },
+      {
+        "id": "error_log_summary",
+        "type": "table",
+        "title": "Recent Errors (Last 24 Hours)",
+        "position": {"row": 15, "col": 1, "width": 12, "height": 3},
+        "query": "SELECT error_type, COUNT(*) as error_count, MAX(created_timestamp) as last_occurrence, severity_level FROM error_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 24 HOUR) GROUP BY error_type, severity_level ORDER BY error_count DESC, last_occurrence DESC LIMIT 10",
+        "columns": [
+          {"field": "error_type", "header": "Error Type", "width": "25%"},
+          {"field": "error_count", "header": "Count", "width": "15%", "format": "number"},
+          {"field": "last_occurrence", "header": "Last Occurrence", "width": "30%", "format": "datetime"},
+          {"field": "severity_level", "header": "Severity", "width": "15%", "format": "badge"}
+        ],
+        "severity_colors": {
+          "LOW": "#2ca02c",
+          "MEDIUM": "#ff7f0e",
+          "HIGH": "#d62728",
+          "CRITICAL": "#8B0000"
+        }
+      }
+    ],
+    "filters": [
+      {
+        "id": "date_range",
+        "type": "date_range",
+        "label": "Date Range",
+        "default_value": "last_7_days",
+        "position": "top"
+      },
+      {
+        "id": "prediction_filter",
+        "type": "multi_select",
+        "label": "Prediction Type",
+        "options": ["approved", "rejected", "manual_review"],
+        "default_value": ["approved", "rejected", "manual_review"],
+        "position": "top"
+      },
+      {
+        "id": "confidence_threshold",
+        "type": "slider",
+        "label": "Minimum Confidence",
+        "min_value": 0,
+        "max_value": 1,
+        "step": 0.1,
+        "default_value": 0,
+        "position": "top"
+      }
+    ],
+    "data_sources": [
+      {
+        "id": "mysql_analytics",
+        "type": "mysql",
+        "connection": {
+          "host": "${MYSQL_HOST}",
+          "database": "lending_analytics",
+          "username": "${MYSQL_USER}",
+          "password": "${MYSQL_PASSWORD}",
+          "port": "${MYSQL_PORT}"
+        },
+        "refresh_interval": 300
+      }
+    ],
+    "alerts": [
+      {
+        "id": "high_error_rate",
+        "name": "High Error Rate Alert",
+        "condition": "error_rate > 5",
+        "query": "SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)) as error_rate FROM error_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)",
+        "notification": {
+          "email": ["admin@company.com"],
+          "slack": "#lending-alerts"
+        },
+        "frequency": "hourly"
+      },
+      {
+        "id": "low_automation_rate",
+        "name": "Low Automation Rate Alert",
+        "condition": "automation_rate < 70",
+        "query": "SELECT ROUND((SUM(CASE WHEN prediction IN ('approved', 'rejected') THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) as automation_rate FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY)",
+        "notification": {
+          "email": ["ml-team@company.com"],
+          "slack": "#ml-monitoring"
+        },
+        "frequency": "daily"
+      },
+      {
+        "id": "processing_time_spike",
+        "name": "Processing Time Spike Alert",
+        "condition": "avg_processing_time > 1000",
+        "query": "SELECT AVG(processing_time_ms) as avg_processing_time FROM ml_prediction_logs WHERE created_timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)",
+        "notification": {
+          "email": ["ops@company.com"],
+          "slack": "#system-performance"
+        },
+        "frequency": "hourly"
+      }
+    ],
+    "scheduled_reports": [
+      {
+        "id": "daily_summary",
+        "name": "Daily Lending Summary Report",
+        "schedule": "0 9 * * *",
+        "format": "pdf",
+        "recipients": ["management@company.com"],
+        "widgets": ["overview_metrics", "prediction_distribution", "daily_trends"]
+      },
+      {
+        "id": "weekly_performance",
+        "name": "Weekly Performance Report",
+        "schedule": "0 9 * * 1",
+        "format": "excel",
+        "recipients": ["ml-team@company.com", "operations@company.com"],
+        "widgets": ["model_accuracy_trend", "confidence_distribution", "error_log_summary"]
+      }
+    ]
+  }
+}

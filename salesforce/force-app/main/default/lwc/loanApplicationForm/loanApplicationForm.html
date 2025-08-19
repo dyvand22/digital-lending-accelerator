@@ -1,0 +1,123 @@
+<template>
+    <lightning-card title="Loan Application Form" icon-name="standard:opportunity">
+        <div class="slds-m-around_medium">
+            
+            <!-- Loading Spinner -->
+            <div if:true={isLoading} class="slds-text-align_center">
+                <lightning-spinner alternative-text="Processing..." size="medium"></lightning-spinner>
+                <p class="slds-m-top_small">Processing your loan application...</p>
+            </div>
+
+            <!-- Application Form -->
+            <div if:false={isLoading}>
+                <lightning-layout multiple-rows>
+                    
+                    <!-- Applicant Information -->
+                    <lightning-layout-item size="12" class="slds-m-bottom_medium">
+                        <h3 class="slds-text-heading_medium slds-m-bottom_small">Applicant Information</h3>
+                    </lightning-layout-item>
+                    
+                    <lightning-layout-item size="6" padding="horizontal-small">
+                        <lightning-input
+                            type="number"
+                            label="Annual Income"
+                            value={annualIncome}
+                            onchange={handleAnnualIncomeChange}
+                            formatter="currency"
+                            required>
+                        </lightning-input>
+                    </lightning-layout-item>
+                    
+                    <lightning-layout-item size="6" padding="horizontal-small">
+                        <lightning-input
+                            type="number"
+                            label="Credit Score"
+                            value={creditScore}
+                            onchange={handleCreditScoreChange}
+                            min="300"
+                            max="850"
+                            required>
+                        </lightning-input>
+                    </lightning-layout-item>
+                    
+                    <!-- Loan Information -->
+                    <lightning-layout-item size="12" class="slds-m-top_medium slds-m-bottom_medium">
+                        <h3 class="slds-text-heading_medium slds-m-bottom_small">Loan Information</h3>
+                    </lightning-layout-item>
+                    
+                    <lightning-layout-item size="6" padding="horizontal-small">
+                        <lightning-input
+                            type="number"
+                            label="Loan Amount"
+                            value={loanAmount}
+                            onchange={handleLoanAmountChange}
+                            formatter="currency"
+                            required>
+                        </lightning-input>
+                    </lightning-layout-item>
+                    
+                    <lightning-layout-item size="6" padding="horizontal-small">
+                        <lightning-output-field 
+                            field-name="Loan_to_Income_Ratio__c" 
+                            value={loanToIncomeRatio}
+                            variant="label-stacked">
+                        </lightning-output-field>
+                    </lightning-layout-item>
+                    
+                    <!-- ML Prediction Results -->
+                    <div if:true={showResults} class="slds-col slds-size_1-of-1 slds-m-top_large">
+                        <lightning-layout-item size="12" class="slds-m-bottom_medium">
+                            <h3 class="slds-text-heading_medium slds-m-bottom_small">ML Approval Results</h3>
+                        </lightning-layout-item>
+                        
+                        <lightning-layout-item size="12">
+                            <div class={resultCardClass}>
+                                <div class="slds-media slds-media_center">
+                                    <div class="slds-media__figure">
+                                        <lightning-icon icon-name={resultIcon} size="medium"></lightning-icon>
+                                    </div>
+                                    <div class="slds-media__body">
+                                        <h4 class="slds-text-heading_small">{approvalStatus}</h4>
+                                        <p class="slds-text-body_regular">
+                                            Confidence Score: {confidenceScore}%
+                                        </p>
+                                        <p if:true={riskScore} class="slds-text-body_small">
+                                            Risk Score: {riskScore}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </lightning-layout-item>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <lightning-layout-item size="12" class="slds-m-top_large slds-text-align_center">
+                        <lightning-button
+                            variant="brand"
+                            label="Submit Application"
+                            onclick={handleSubmit}
+                            disabled={isSubmitDisabled}>
+                        </lightning-button>
+                        
+                        <lightning-button
+                            variant="neutral"
+                            label="Reset"
+                            onclick={handleReset}
+                            class="slds-m-left_small">
+                        </lightning-button>
+                    </lightning-layout-item>
+                    
+                </lightning-layout>
+            </div>
+            
+            <!-- Error Messages -->
+            <div if:true={errorMessage} class="slds-m-top_medium">
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{errorMessage}</h2>
+                </div>
+            </div>
+            
+        </div>
+    </lightning-card>
+</template>

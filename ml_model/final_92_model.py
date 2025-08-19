@@ -58,7 +58,11 @@ def train_final_model():
     
     # Enhanced feature engineering
     if 'term' in feature_df.columns:
-        feature_df['term'] = feature_df['term'].str.extract('(\\d+)').astype(float)
+        # Handle both string and numeric term values
+        if feature_df['term'].dtype == 'object':
+            feature_df['term'] = feature_df['term'].str.extract('(\\d+)').astype(float)
+        else:
+            feature_df['term'] = feature_df['term'].astype(float)
     
     if 'fico_range_low' in feature_df.columns and 'fico_range_high' in feature_df.columns:
         feature_df['fico_avg'] = (feature_df['fico_range_low'] + feature_df['fico_range_high']) / 2

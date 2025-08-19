@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>58.0</apiVersion>
+    <description>Automated workflow for loan processing with ML integration</description>
+    <environments>Default</environments>
+    <interviewLabel>Automated Loan Processing {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Automated Loan Processing</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Get_Loan_Application</targetReference>
+        </connector>
+        <object>Loan_Application__c</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    
+    <!-- Get Loan Application Record -->
+    <recordLookups>
+        <name>Get_Loan_Application</name>
+        <label>Get Loan Application</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+        <connector>
+            <targetReference>Decision_Auto_Process</targetReference>
+        </connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Id</field>
+            <operator>EqualTo</operator>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>Loan_Application__c</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
+    
+    <!-- Decision: Auto Process Eligibility -->
+    <decisions>
+        <name>Decision_Auto_Process</name>
+        <label>Decision: Auto Process Eligibility</label>
+        <locationX>176</locationX>
+        <locationY>242</locationY>
+        <defaultConnector>
+            <targetReference>Route_Manual_Review</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>Manual Review Required</defaultConnectorLabel>
+        <rules>
+            <name>Eligible_for_Auto_Processing</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Get_Loan_Application.Credit_Score__c</leftValueReference>
+                <operator>GreaterThanOrEqualTo</operator>
+                <rightValue>
+                    <numberValue>600</numberValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>Get_Loan_Application.Loan_Amount__c</leftValueReference>
+                <operator>LessThanOrEqualTo</operator>
+                <rightValue>
+                    <numberValue>100000</numberValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>Get_Loan_Application.Applicant_Annual_Income__c</leftValueReference>
+                <operator>GreaterThan</operator>
+                <rightValue>
+                    <numberValue>30000</numberValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Call_ML_API</targetReference>
+            </connector>
+            <label>Eligible for Auto Processing</label>
+        </rules>
+    </decisions>
+    
+    <!-- Call ML API for Prediction -->
+    <actionCalls>
+        <name>Call_ML_API</name>
+        <label>Call ML API</label>
+        <locationX>50</locationX>
+        <locationY>350</locationY>
+        <actionName>LoanApprovalMLService</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Decision_ML_Result</targetReference>
+        </connector>
+        <inputParameters>
+            <name>loanApplication</name>
+            <value>
+                <elementReference>Get_Loan_Application</elementReference>
+            </value>
+        </inputParameters>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    
+    <!-- Decision: ML Result Processing -->
+    <decisions>
+        <name>Decision_ML_Result</name>
+        <label>Decision: ML Result</label>
+        <locationX>50</locationX>
+        <locationY>458</locationY>
+        <defaultConnector>
+            <targetReference>Route_Manual_Review</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>Manual Review</defaultConnectorLabel>
+        <rules>
+            <name>ML_Approved_High_Confidence</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Call_ML_API.approvalStatus</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>Approved</stringValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>Call_ML_API.confidence</leftValueReference>
+                <operator>GreaterThanOrEqualTo</operator>
+                <rightValue>
+                    <numberValue>0.85</numberValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Update_Auto_Approved</targetReference>
+            </connector>
+            <label>ML Approved - High Confidence</label>
+        </rules>
+        <rules>
+            <name>ML_Rejected_High_Confidence</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Call_ML_API.approvalStatus</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>Rejected</stringValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>Call_ML_API.confidence</leftValueReference>
+                <operator>GreaterThanOrEqualTo</operator>
+                <rightValue>
+                    <numberValue>0.85</numberValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Update_Auto_Rejected</targetReference>
+            </connector>
+            <label>ML Rejected - High Confidence</label>
+        </rules>
+    </decisions>
+    
+    <!-- Update: Auto Approved -->
+    <recordUpdates>
+        <name>Update_Auto_Approved</name>
+        <label>Update: Auto Approved</label>
+        <locationX>50</locationX>
+        <locationY>566</locationY>
+        <connector>
+            <targetReference>Send_Approval_Notification</targetReference>
+        </connector>
+        <inputAssignments>
+            <field>ML_Approval_Status__c</field>
+            <value>
+                <stringValue>Approved</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>ML_Confidence_Score__c</field>
+            <value>
+                <elementReference>Call_ML_API.confidence</elementReference>
+            </value>
+        </inputAssignments>
+        <inputReference>Get_Loan_Application</inputReference>
+    </recordUpdates>
+    
+    <!-- Update: Auto Rejected -->
+    <recordUpdates>
+        <name>Update_Auto_Rejected</name>
+        <label>Update: Auto Rejected</label>
+        <locationX>314</locationX>
+        <locationY>566</locationY>
+        <connector>
+            <targetReference>Send_Rejection_Notification</targetReference>
+        </connector>
+        <inputAssignments>
+            <field>ML_Approval_Status__c</field>
+            <value>
+                <stringValue>Rejected</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>ML_Confidence_Score__c</field>
+            <value>
+                <elementReference>Call_ML_API.confidence</elementReference>
+            </value>
+        </inputAssignments>
+        <inputReference>Get_Loan_Application</inputReference>
+    </recordUpdates>
+    
+    <!-- Route to Manual Review -->
+    <recordUpdates>
+        <name>Route_Manual_Review</name>
+        <label>Route to Manual Review</label>
+        <locationX>578</locationX>
+        <locationY>350</locationY>
+        <connector>
+            <targetReference>Send_Manual_Review_Notification</targetReference>
+        </connector>
+        <inputAssignments>
+            <field>ML_Approval_Status__c</field>
+            <value>
+                <stringValue>Manual Review Required</stringValue>
+            </value>
+        </inputAssignments>
+        <inputReference>Get_Loan_Application</inputReference>
+    </recordUpdates>
+    
+    <!-- Send Approval Notification -->
+    <actionCalls>
+        <name>Send_Approval_Notification</name>
+        <label>Send Approval Notification</label>
+        <locationX>50</locationX>
+        <locationY>674</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <inputParameters>
+            <name>emailAddresses</name>
+            <value>
+                <stringValue>loans@company.com</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailSubject</name>
+            <value>
+                <stringValue>Loan Application Approved - {!Get_Loan_Application.Name}</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailBody</name>
+            <value>
+                <stringValue>Loan application {!Get_Loan_Application.Name} has been automatically approved by our ML system with {!Call_ML_API.confidence}% confidence.</stringValue>
+            </value>
+        </inputParameters>
+    </actionCalls>
+    
+    <!-- Send Rejection Notification -->
+    <actionCalls>
+        <name>Send_Rejection_Notification</name>
+        <label>Send Rejection Notification</label>
+        <locationX>314</locationX>
+        <locationY>674</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <inputParameters>
+            <name>emailAddresses</name>
+            <value>
+                <stringValue>loans@company.com</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailSubject</name>
+            <value>
+                <stringValue>Loan Application Rejected - {!Get_Loan_Application.Name}</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailBody</name>
+            <value>
+                <stringValue>Loan application {!Get_Loan_Application.Name} has been automatically rejected by our ML system with {!Call_ML_API.confidence}% confidence.</stringValue>
+            </value>
+        </inputParameters>
+    </actionCalls>
+    
+    <!-- Send Manual Review Notification -->
+    <actionCalls>
+        <name>Send_Manual_Review_Notification</name>
+        <label>Send Manual Review Notification</label>
+        <locationX>578</locationX>
+        <locationY>458</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <inputParameters>
+            <name>emailAddresses</name>
+            <value>
+                <stringValue>loans@company.com</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailSubject</name>
+            <value>
+                <stringValue>Manual Review Required - {!Get_Loan_Application.Name}</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailBody</name>
+            <value>
+                <stringValue>Loan application {!Get_Loan_Application.Name} requires manual review. Please check the application details in Salesforce.</stringValue>
+            </value>
+        </inputParameters>
+    </actionCalls>
+</Flow>
