@@ -3,9 +3,9 @@
 ## Step 1: Configure Git (Run these commands with your details)
 
 ```bash
-# Replace with your actual GitHub username and email
-git config --global user.name "YourGitHubUsername"
-git config --global user.email "your-email@example.com"
+# ✅ COMPLETED - Git configured with your details
+git config --global user.name "dyvand22"
+git config --global user.email "priyanshu9708saps@gmail.com"
 ```
 
 ## Step 2: Add and commit your files
@@ -32,7 +32,7 @@ git commit -m "Initial commit: Digital Lending Accelerator setup with ML environ
 
 ```bash
 # Add your GitHub repository as remote origin
-git remote add origin https://github.com/YourUsername/digital-lending-accelerator.git
+git remote add origin https://github.com/dyvand22/digital-lending-accelerator.git
 
 # Push your code to GitHub
 git branch -M main
@@ -41,7 +41,7 @@ git push -u origin main
 
 ## Step 5: Verify
 
-- Your repository should now be visible at: `https://github.com/YourUsername/digital-lending-accelerator`
+- Your repository should now be visible at: `https://github.com/dyvand22/digital-lending-accelerator`
 - All your code, README, and project structure will be displayed
 
 ## Project Highlights for GitHub
